@@ -1,16 +1,11 @@
 import math
 
 class Node:
-    def __init__(self, _id:str, _name:str, _x:int = 0, _y:int = 0):
-        self.id = _id
-        self.name = _name
-        self.x = int(_x)
-        self.y = int(_y)
+    def __init__(self, id: int, name: str, x: int, y: int):
+        self.id = id
+        self.name = name
+        self.x = x
+        self.y = y
 
-    def measureDistanceFrom(self, anotherNode) -> int:
-        distance = math.sqrt((self.x - anotherNode.x)**2 + (self.y - anotherNode.y) **2)
-        if distance % 10 > 5:
-            distance = int(distance) + 1
-        else:
-            distance = int(distance)
-        return distance
+    def distance_to(self, other: "Node") -> int:
+        return int(round(((self.x - other.x)**2 + (self.y - other.y)**2) ** 0.5))

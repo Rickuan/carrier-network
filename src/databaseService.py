@@ -1,76 +1,120 @@
 import sqlite3
 from datetime import datetime
 
+from src.node.node import Node
+from src.order.orderItem import OrderItem
+from src.agent.carrier import Carrier
+
 conn = sqlite3.connect("carrier_network.db")
 cursor = conn.cursor()
 
-cursor.executescript("""
-CREATE TABLE IF NOT EXISTS Carrier (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL
-);
+# -------------------------------------------------
+# CREATE DATABASE
+# -------------------------------------------------
+def create_database():
+    cursor.executescript("""
+    CREATE TABLE IF NOT EXISTS Carrier (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL
+    );
 
-CREATE TABLE IF NOT EXISTS Node (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, 
-    name TEXT NOT NULL, 
-    x INTEGER NOT NULL, 
-    y INTEGER NOT NULL
-);
+    CREATE TABLE IF NOT EXISTS Node (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, 
+        name TEXT NOT NULL, 
+        x INTEGER NOT NULL, 
+        y INTEGER NOT NULL
+    );
 
-CREATE TABLE IF NOT EXISTS OrderItem (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    pickup_node INTEGER,
-    delivery_node INTEGER,
-    current_owner INTEGER,
-    FOREIGN KEY(pickup_node) REFERENCES Node(id),
-    FOREIGN KEY(delivery_node) REFERENCES Node(id),
-    FOREIGN KEY(current_owner) REFERENCES Carrier(id)
-);
+    CREATE TABLE IF NOT EXISTS OrderItem (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        pickup_node INTEGER,
+        delivery_node INTEGER,
+        current_owner INTEGER,
+        FOREIGN KEY(pickup_node) REFERENCES Node(id),
+        FOREIGN KEY(delivery_node) REFERENCES Node(id),
+        FOREIGN KEY(current_owner) REFERENCES Carrier(id)
+    );
 
-CREATE TABLE IF NOT EXISTS OrderBundle (
-    id INTEGER PRIMARY KEY AUTOINCREMENT
-);
+    CREATE TABLE IF NOT EXISTS OrderBundle (
+        id INTEGER PRIMARY KEY AUTOINCREMENT
+    );
 
-CREATE TABLE IF NOT EXISTS OrderBundleItem (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    bundle_id INTEGER,
-    order_id INTEGER,
-    FOREIGN KEY(bundle_id) REFERENCES OrderBundle(id),
-    FOREIGN KEY(order_id) REFERENCES OrderItem(id)
-);
+    CREATE TABLE IF NOT EXISTS OrderBundleItem (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        bundle_id INTEGER,
+        order_id INTEGER,
+        FOREIGN KEY(bundle_id) REFERENCES OrderBundle(id),
+        FOREIGN KEY(order_id) REFERENCES OrderItem(id)
+    );
 
-CREATE TABLE IF NOT EXISTS TransactionLog (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    buyer_id INTEGER,
-    seller_id INTEGER,
-    order_id INTEGER,
-    timestamp TEXT,
-    FOREIGN KEY(buyer_id) REFERENCES Carrier(id),
-    FOREIGN KEY(seller_id) REFERENCES Carrier(id),
-    FOREIGN KEY(order_id) REFERENCES OrderItem(id)
-);
-""")
-conn.commit()
+    CREATE TABLE IF NOT EXISTS TransactionLog (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        buyer_id INTEGER,
+        seller_id INTEGER,
+        order_id INTEGER,
+        timestamp TEXT,
+        FOREIGN KEY(buyer_id) REFERENCES Carrier(id),
+        FOREIGN KEY(seller_id) REFERENCES Carrier(id),
+        FOREIGN KEY(order_id) REFERENCES OrderItem(id)
+    );
+    """)
+    conn.commit()
 
 # -------------------------------------------------
-# BASIC OPERATIONS
+# BASIC OPERATIONS OF CARRIER
 # -------------------------------------------------
-
 def add_carrier(name):
     cursor.execute("INSERT INTO Carrier (name) VALUES (?)", 
                    (name,))
     conn.commit()
 
+def get_carrier_object(carrierID) -> Carrier:
+    cursor.execute("SELECT * FROM Carrier WHERE id = ?", 
+                   (carrierID,))
+    result = cursor.fetchone()
+    return Carrier(*result)
+
+# -------------------------------------------------
+# BASIC OPERATIONS OF NODE
+# -------------------------------------------------
 def add_node(name, x, y):
     cursor.execute("INSERT INTO Node (name, x, y) VALUES (?, ?, ?)", 
                    (name, x, y))
     conn.commit()
 
+def get_node_object(nodeID:int) -> Node:
+    cursor.execute("SELECT * FROM Node WHERE id = ?",
+                (nodeID,))
+    result = cursor.fetchone()
+    return Node(*result)
+
+# -------------------------------------------------
+# BASIC OPERATIONS OF ORDER
+# -------------------------------------------------
 def add_order(pickup, delivery, owner_id):
     cursor.execute("INSERT INTO OrderItem (pickup_node, delivery_node, current_owner) VALUES (?, ?, ?)",
                    (pickup, delivery, owner_id))
     conn.commit()
 
+def get_order_object(orderID:int) -> OrderItem:
+    cursor.execute("SELECT * FROM OrderItem WHERE id = ?", 
+                   (orderID,))
+    result = cursor.fetchone()
+    return OrderItem(*result)
+
+def get_order_objects_of_owner(carrierID:int) -> list[OrderItem]:
+    cursor.execute("SELECT * FROM OrderITEM WHERE current_owner = ?", 
+                    (carrierID,))
+    result = cursor.fetchall()
+    return [OrderItem(*every) for every in result]
+
+
+
+
+
+# -------------------------------------------------
+# BASIC OPERATIONS OF ORDER
+# -------------------------------------------------
 # 新增 bundle 並加上多筆 order
 def create_bundle(order_ids):
     # cursor.execute("INSERT INTO OrderBundle (name) VALUES (?)", 
@@ -101,7 +145,6 @@ def perform_transaction(buyer_id, order_id):
 # -------------------------------------------------
 # CREATE INITIAL DATABASE
 # -------------------------------------------------
-
 def init_carrier():
     add_carrier("Carrier A")
     add_carrier("Carrier B")
@@ -190,5 +233,10 @@ if __name__ == "__main__":
     # cursor.execute("DROP TABLE OrderBundleItem")
     # cursor.execute("DROP TABLE OrderBundle")
     # conn.commit()
+
+
+    # cursor.execute("SELECT id, pickup_node FROM OrderItem WHERE id = 1")
+    # print(type(cursor.fetchone()))
+    # print()
 
     print("📦 資料庫初始化完成 & 測試資料寫入！")
