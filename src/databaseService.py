@@ -1,5 +1,6 @@
 import sqlite3
 from datetime import datetime
+import pandas as pd
 
 from src.node.node import Node
 from src.order.orderItem import OrderItem
@@ -82,11 +83,21 @@ def add_node(name, x, y):
                    (name, x, y))
     conn.commit()
 
-def get_node_object(nodeID:int) -> Node:
-    cursor.execute("SELECT * FROM Node WHERE id = ?",
-                (nodeID,))
+def get_node_object(key: int | str) -> Node:
+    if type(key) == int:
+        cursor.execute("SELECT * FROM Node WHERE id = ?", (key,))
+    elif type(key) == str:
+        cursor.execute("SELECT * FROM Node WHERE name = ?", (key,))
     result = cursor.fetchone()
     return Node(*result)
+
+def get_nodeID_pairs_of_owner(carrierID:int) -> list[list[int]]:
+    orders = get_order_objects_of_owner(carrierID)
+    return [[order.pickup_node, order.delivery_node] for order in orders]
+
+def get_node_pairs_of_owner(carrierID:int) -> list[list[Node]]:
+    nodeID_pair = get_nodeID_pairs_of_owner(carrierID)
+    return [[get_node_object(nodeID) for nodeID in pair] for pair in nodeID_pair]
 
 # -------------------------------------------------
 # BASIC OPERATIONS OF ORDER
@@ -108,12 +119,15 @@ def get_order_objects_of_owner(carrierID:int) -> list[OrderItem]:
     result = cursor.fetchall()
     return [OrderItem(*every) for every in result]
 
-
-
-
+# -------------------------------------------------
+# BASIC OPERATIONS OF ????????????????????????????
+# -------------------------------------------------
+def read_travelMatrix(path_csv:str) -> list[list[int]]:
+    df = pd.read_csv(path_csv)
+    return [row[1:] for row in df.astype(int).values.tolist()]
 
 # -------------------------------------------------
-# BASIC OPERATIONS OF ORDER
+# BASIC OPERATIONS OF ????????????????????????????
 # -------------------------------------------------
 # 新增 bundle 並加上多筆 order
 def create_bundle(order_ids):
@@ -233,10 +247,4 @@ if __name__ == "__main__":
     # cursor.execute("DROP TABLE OrderBundleItem")
     # cursor.execute("DROP TABLE OrderBundle")
     # conn.commit()
-
-
-    # cursor.execute("SELECT id, pickup_node FROM OrderItem WHERE id = 1")
-    # print(type(cursor.fetchone()))
-    # print()
-
-    print("📦 資料庫初始化完成 & 測試資料寫入！")
+    pass
